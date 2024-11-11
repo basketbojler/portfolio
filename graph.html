@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced Portfolio Value Graph</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .container { width: 100%; max-width: 1000px; margin: 0 auto; padding: 20px; text-align: center; }
+    .chart-container { width: 95%; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .slider-container { display: flex; justify-content: space-between; align-items: center; margin: 20px 0; }
+    .slider-label { flex: 1; margin-right: 10px; }
+    .slider-value { font-weight: bold; }
+    input[type="range"] { flex: 2; }
+    table { width: 100%; max-width: 800px; margin: 20px auto; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+    th { background-color: #f4f4f4; }
+    /* Mobile adjustments */
+    @media (max-width: 600px) {
+      .slider-container { flex-direction: column; align-items: flex-start; }
+      .slider-label { margin-bottom: 5px; }
+      .chart-container { width: 100%; }
+      table { font-size: 0.9em; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Enhanced Portfolio Value Over Time (Years)</h1>
+  <div class="chart-container">
+    <canvas id="portfolioChart"></canvas>
+  </div>
+  
+  <!-- Initial Investment Slider -->
+  <div class="slider-container">
+    <label class="slider-label">Initial Investment (€): 
+      <span id="initialInvestmentDisplay" class="slider-value">10000</span>
+    </label>
+    <input type="range" id="initialInvestment" min="0" max="50000" value="10000" step="500">
+  </div>
+
+  <!-- Monthly Investment Slider -->
+  <div class="slider-container">
+    <label class="slider-label">Monthly Investment (€): 
+      <span id="monthlyInvestmentDisplay" class="slider-value">1000</span>
+    </label>
+    <input type="range" id="monthlyInvestment" min="100" max="5000" value="1000" step="50">
+  </div>
+  
+  <!-- Interest Rate Slider -->
+  <div class="slider-container">
+    <label class="slider-label">Yearly Interest Rate (%): 
+      <span id="interestRateDisplay" class="slider-value">5</span>
+    </label>
+    <input type="range" id="interestRate" min="1" max="30" value="5" step="0.1">
+  </div>
+
+  <!-- Table for Milestone Calculation -->
+  <h2>Time to Reach Milestones</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Milestone (€)</th>
+        <th>Months</th>
+        <th>Years</th>
+      </tr>
+    </thead>
+    <tbody id="milestoneTableBody">
+      <tr>
+        <td>100,000</td>
+        <td id="monthsTo100000">-</td>
+        <td id="yearsTo100000">-</td>
+      </tr>
+      <tr>
+        <td>200,000</td>
+        <td id="monthsTo200000">-</td>
+        <td id="yearsTo200000">-</td>
+      </tr>
+      <tr>
+        <td>300,000</td>
+        <td id="monthsTo300000">-</td>
+        <td id="yearsTo300000">-</td>
+      </tr>
+      <tr>
+        <td>400,000</td>
+        <td id="monthsTo400000">-</td>
+        <td id="yearsTo400000">-</td>
+      </tr>
+      <tr>
+        <td>500,000</td>
+        <td id="monthsTo500000">-</td>
+        <td id="yearsTo500000">-</td>
+      </tr>
+      <tr>
+        <td>600,000</td>
+        <td id="monthsTo600000">-</td>
+        <td id="yearsTo600000">-</td>
+      </tr>
+      <tr>
+        <td>700,000</td>
+        <td id="monthsTo700000">-</td>
+        <td id="yearsTo700000">-</td>
+      </tr>
+      <tr>
+        <td>800,000</td>
+        <td id="monthsTo800000">-</td>
+        <td id="yearsTo800000">-</td>
+      </tr>
+      <tr>
+        <td>900,000</td>
+        <td id="monthsTo900000">-</td>
+        <td id="yearsTo900000">-</td>
+      </tr>
+      <tr>
+        <td>1,000,000</td>
+        <td id="monthsTo1000000">-</td>
+        <td id="yearsTo1000000">-</td>
+      </tr>
+      <tr>
+        <td>2,000,000</td>
+        <td id="monthsTo2000000">-</td>
+        <td id="yearsTo2000000">-</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const ctx = document.getElementById('portfolioChart').getContext('2d');
+  const initialInvestmentDisplay = document.getElementById('initialInvestmentDisplay');
+  const monthlyInvestmentDisplay = document.getElementById('monthlyInvestmentDisplay');
+  const interestRateDisplay = document.getElementById('interestRateDisplay');
+  const initialInvestmentSlider = document.getElementById('initialInvestment');
+  const monthlyInvestmentSlider = document.getElementById('monthlyInvestment');
+  const interestRateSlider = document.getElementById('interestRate');
+
+  let initialInvestment = 10000;
+  let monthlyInvestment = 1000;
+  let interestRate = 5;
+
+  const milestones = [100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000, 2000000];
+
+  // Calculate portfolio value and time to milestones, extending to 50 years if necessary
+  function calculatePortfolioValues(maxYears = 50) {
+    const values = [];
+    let portfolioValue = initialInvestment;
+    const milestoneReached = {};
+    let monthsElapsed = 0;
+
+    milestones.forEach(milestone => milestoneReached[milestone] = null);
+
+    for (let year = 1; year <= maxYears; year++) {
+      for (let month = 0; month < 12; month++) {
+        portfolioValue += monthlyInvestment;
+        portfolioValue *= 1 + (interestRate / 100) / 12;
+        monthsElapsed++;
+
+        milestones.forEach(milestone => {
+          if (portfolioValue >= milestone && milestoneReached[milestone] === null) {
+            milestoneReached[milestone] = monthsElapsed;
+          }
+        });
+      }
+      values.push({ year, value: portfolioValue });
+    }
+
+    updateMilestoneTable(milestoneReached);
+    return values;
+  }
+
+  // Update milestone table with calculated times
+  function updateMilestoneTable(milestoneReached) {
+    milestones.forEach(milestone => {
+      const months = milestoneReached[milestone];
+      document.getElementById(`monthsTo${milestone}`).textContent = months !== null ? months : "-";
+      document.getElementById(`yearsTo${milestone}`).textContent = months !== null ? (months / 12).toFixed(1) : "-";
+    });
+  }
+
+  // Update the chart with new data
+  function updateChart(chart) {
+    const data = calculatePortfolioValues();
+    chart.data.labels = data.map(d => `Year ${d.year}`);
+    chart.data.datasets[0].data = data.map(d => d.value);
+    chart.update();
+  }
+
+  // Create a gradient for the chart line
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, 'rgba(75, 192, 192, 1)');
+  gradient.addColorStop(1, 'rgba(153, 102, 255, 0.5)');
+
+  // Initialize Chart.js chart with adjusted aspect ratio for larger proportional view
+  const portfolioChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: calculatePortfolioValues().map(d => `Year ${d.year}`),
+      datasets: [{
+        label: 'Portfolio Value (€)',
+        data: calculatePortfolioValues().map(d => d.value),
+        fill: false,
+        borderColor: gradient,
+        backgroundColor: gradient,
+        borderWidth: 2,
+        tension: 0.3 // Smooth the line
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 1.5, // Adjust aspect ratio for larger view
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `€${context.raw.toFixed(2)}`;
+            }
+          }
+        },
+        legend: {
+          display: true,
+          labels: { font: { size: 14 } }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Time (Years)', font: { size: 14 } },
+          min: 0,
+          max: 50, // Extended x-axis from 0 to 50 years if needed
+          ticks: { stepSize: 5 }
+        },
+        y: {
+          title: { display: true, text: 'Portfolio Value (€)', font: { size: 14 } },
+          min: 0,
+          max: 2000000, // Fixed y-axis from 0 to 2 million
+          ticks: { callback: value => `€${value.toLocaleString()}` }
+        }
+      }
+    }
+  });
+
+  // Update display values and chart on slider change
+  initialInvestmentSlider.addEventListener('input', () => {
+    initialInvestment = parseInt(initialInvestmentSlider.value);
+    initialInvestmentDisplay.textContent = initialInvestment;
+    updateChart(portfolioChart);
+  });
+
+  monthlyInvestmentSlider.addEventListener('input', () => {
+    monthlyInvestment = parseInt(monthlyInvestmentSlider.value);
+    monthlyInvestmentDisplay.textContent = monthlyInvestment;
+    updateChart(portfolioChart);
+  });
+
+  interestRateSlider.addEventListener('input', () => {
+    interestRate = parseFloat(interestRateSlider.value);
+    interestRateDisplay.textContent = interestRate;
+    updateChart(portfolioChart);
+  });
+</script>
+
+</body>
+</html>
